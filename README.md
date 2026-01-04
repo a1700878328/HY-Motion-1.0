@@ -147,6 +147,7 @@ python3 gradio_app.py
 **Notes**:
 - The VRM file will be base64-encoded and embedded in the HTML preview. Large VRM files may increase initial loading time.
 - VRM's MToon shaders are automatically converted to standard materials for web compatibility.
+- Coordinate system differences between SMPL and VRM are automatically handled.
 
 
 ## 🔗 BibTeX
