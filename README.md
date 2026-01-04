@@ -135,6 +135,17 @@ python3 gradio_app.py
 ```
 After running the command, open your browser and visit `http://localhost:7860`
 
+#### Custom Character Model (VRM)
+
+You can use your own VRM character model for the web preview by setting the `HYMOTION_PREVIEW_VRM` environment variable:
+
+```bash
+export HYMOTION_PREVIEW_VRM="path/to/your/model.vrm"
+python3 gradio_app.py
+```
+
+**Note**: The VRM file will be base64-encoded and embedded in the HTML preview. Large VRM files may increase initial loading time.
+
 
 ## 🔗 BibTeX
 
