@@ -144,7 +144,9 @@ export HYMOTION_PREVIEW_VRM="path/to/your/model.vrm"
 python3 gradio_app.py
 ```
 
-**Note**: The VRM file will be base64-encoded and embedded in the HTML preview. Large VRM files may increase initial loading time.
+**Notes**:
+- The VRM file will be base64-encoded and embedded in the HTML preview. Large VRM files may increase initial loading time.
+- VRM's MToon shaders are automatically converted to standard materials for web compatibility.
 
 
 ## 🔗 BibTeX

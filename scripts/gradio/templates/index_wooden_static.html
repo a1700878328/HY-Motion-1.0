@@ -79,10 +79,15 @@
 <script type="application/json" id="smpl-data-json">
 {{ smpl_data_json }}
 </script>
+<script type="text/plain" id="vrm-data-base64">
+{{ vrm_data_base64 }}
+</script>
 
 <script type="module">
     import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { VRMHumanBoneName, VRMLoaderPlugin, VRMUtils } from 'https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@2.0.4/lib/three-vrm.module.js';
 
     // ============================================================
     // EMBEDDED: create_ground.js functions
@@ -558,6 +563,7 @@
     let modelsLoaded = false;
     let expectedModelCount = 0;
     let loadedModelCount = 0;
+    let vrmInstances = [];
 
     let ignoreGlobalTrans = false;
     let currentOffsets = [];
@@ -582,8 +588,11 @@
         currentOffsets = offsets;
 
         info.forEach((smpl_params, b) => {
-            const bones = model_mesh[smpl_params.id];
-            const meshContainer = bones[0].parent;
+            const entry = model_mesh[smpl_params.id];
+            if (!entry) return;
+            const isWooden = Array.isArray(entry);
+            const bones = isWooden ? entry : entry.bones;
+            const meshContainer = isWooden ? bones[0].parent : entry.sceneRoot;
 
             if (ignoreGlobalTrans) {
                 meshContainer.position.set(-offsets[b], 0, 0);
@@ -599,7 +608,9 @@
             var angle = axis.length();
             axis.normalize();
             var quaternion = new THREE.Quaternion().setFromAxisAngle(axis, angle);
-            bones[0].quaternion.copy(quaternion);
+            if (bones[0]) {
+                bones[0].quaternion.copy(quaternion);
+            }
 
             var poses_offset = 0;
 
@@ -621,9 +632,13 @@
                     if (angle > 1e-6) {
                         axis.normalize();
                         var quaternion = new THREE.Quaternion().setFromAxisAngle(axis, angle);
-                        bones[i].quaternion.copy(quaternion);
+                        if (bones[i]) {
+                            bones[i].quaternion.copy(quaternion);
+                        }
                     } else {
-                        bones[i].quaternion.set(0, 0, 0, 1);
+                        if (bones[i]) {
+                            bones[i].quaternion.set(0, 0, 0, 1);
+                        }
                     }
                 }
             }
@@ -803,6 +818,117 @@
         });
     }
 
+    function base64ToArrayBuffer(base64) {
+        const binary = atob(base64);
+        const len = binary.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+            bytes[i] = binary.charCodeAt(i);
+        }
+        return bytes.buffer;
+    }
+
+    const SMPL_TO_VRM_BONE = {
+        Pelvis: VRMHumanBoneName.Hips,
+        Spine1: VRMHumanBoneName.Spine,
+        Spine2: VRMHumanBoneName.Chest,
+        Spine3: VRMHumanBoneName.UpperChest,
+        Neck: VRMHumanBoneName.Neck,
+        Head: VRMHumanBoneName.Head,
+        L_Collar: VRMHumanBoneName.LeftShoulder,
+        R_Collar: VRMHumanBoneName.RightShoulder,
+        L_Shoulder: VRMHumanBoneName.LeftUpperArm,
+        R_Shoulder: VRMHumanBoneName.RightUpperArm,
+        L_Elbow: VRMHumanBoneName.LeftLowerArm,
+        R_Elbow: VRMHumanBoneName.RightLowerArm,
+        L_Wrist: VRMHumanBoneName.LeftHand,
+        R_Wrist: VRMHumanBoneName.RightHand,
+        L_Hip: VRMHumanBoneName.LeftUpperLeg,
+        R_Hip: VRMHumanBoneName.RightUpperLeg,
+        L_Knee: VRMHumanBoneName.LeftLowerLeg,
+        R_Knee: VRMHumanBoneName.RightLowerLeg,
+        L_Ankle: VRMHumanBoneName.LeftFoot,
+        R_Ankle: VRMHumanBoneName.RightFoot,
+        L_Foot: VRMHumanBoneName.LeftToes,
+        R_Foot: VRMHumanBoneName.RightToes,
+        L_Thumb1: VRMHumanBoneName.LeftThumbProximal,
+        L_Thumb2: VRMHumanBoneName.LeftThumbIntermediate,
+        L_Thumb3: VRMHumanBoneName.LeftThumbDistal,
+        L_Index1: VRMHumanBoneName.LeftIndexProximal,
+        L_Index2: VRMHumanBoneName.LeftIndexIntermediate,
+        L_Index3: VRMHumanBoneName.LeftIndexDistal,
+        L_Middle1: VRMHumanBoneName.LeftMiddleProximal,
+        L_Middle2: VRMHumanBoneName.LeftMiddleIntermediate,
+        L_Middle3: VRMHumanBoneName.LeftMiddleDistal,
+        L_Ring1: VRMHumanBoneName.LeftRingProximal,
+        L_Ring2: VRMHumanBoneName.LeftRingIntermediate,
+        L_Ring3: VRMHumanBoneName.LeftRingDistal,
+        L_Pinky1: VRMHumanBoneName.LeftLittleProximal,
+        L_Pinky2: VRMHumanBoneName.LeftLittleIntermediate,
+        L_Pinky3: VRMHumanBoneName.LeftLittleDistal,
+        R_Thumb1: VRMHumanBoneName.RightThumbProximal,
+        R_Thumb2: VRMHumanBoneName.RightThumbIntermediate,
+        R_Thumb3: VRMHumanBoneName.RightThumbDistal,
+        R_Index1: VRMHumanBoneName.RightIndexProximal,
+        R_Index2: VRMHumanBoneName.RightIndexIntermediate,
+        R_Index3: VRMHumanBoneName.RightIndexDistal,
+        R_Middle1: VRMHumanBoneName.RightMiddleProximal,
+        R_Middle2: VRMHumanBoneName.RightMiddleIntermediate,
+        R_Middle3: VRMHumanBoneName.RightMiddleDistal,
+        R_Ring1: VRMHumanBoneName.RightRingProximal,
+        R_Ring2: VRMHumanBoneName.RightRingIntermediate,
+        R_Ring3: VRMHumanBoneName.RightRingDistal,
+        R_Pinky1: VRMHumanBoneName.RightLittleProximal,
+        R_Pinky2: VRMHumanBoneName.RightLittleIntermediate,
+        R_Pinky3: VRMHumanBoneName.RightLittleDistal,
+    };
+
+    async function loadVrmFromBase64(vrmBase64) {
+        const loader = new GLTFLoader();
+        loader.register(parser => new VRMLoaderPlugin(parser));
+
+        const arrayBuffer = base64ToArrayBuffer(vrmBase64);
+        const blob = new Blob([arrayBuffer], { type: 'model/gltf-binary' });
+        const url = URL.createObjectURL(blob);
+        const gltf = await loader.loadAsync(url);
+        URL.revokeObjectURL(url);
+
+        const vrm = gltf.userData.vrm;
+        if (!vrm) {
+            throw new Error('VRM data not found in GLTF');
+        }
+        VRMUtils.removeUnnecessaryVertices(gltf.scene);
+        VRMUtils.removeUnnecessaryJoints(gltf.scene);
+
+        return vrm;
+    }
+
+    function buildVrmBoneMap(vrm) {
+        const bones = [];
+        const hips = vrm.humanoid.getNormalizedBoneNode
+            ? vrm.humanoid.getNormalizedBoneNode(VRMHumanBoneName.Hips)
+            : vrm.humanoid.getBoneNode(VRMHumanBoneName.Hips);
+        if (!hips) {
+            throw new Error('VRM humanoid hips bone not found');
+        }
+        bones.push(hips);
+
+        for (let i = 1; i < SMPLH_JOINT_NAMES.length; i++) {
+            const smplName = SMPLH_JOINT_NAMES[i];
+            const vrmBoneName = SMPL_TO_VRM_BONE[smplName];
+            if (!vrmBoneName) {
+                bones.push(null);
+                continue;
+            }
+            const bone = vrm.humanoid.getNormalizedBoneNode
+                ? vrm.humanoid.getNormalizedBoneNode(vrmBoneName)
+                : vrm.humanoid.getBoneNode(vrmBoneName);
+            bones.push(bone || null);
+        }
+
+        return bones;
+    }
+
     // Load embedded SMPL data directly (no fetch needed)
     function loadEmbeddedData() {
         try {
@@ -833,31 +959,119 @@
             modelsLoaded = false;
             updateLoadingStatus();
 
-            infos[0].forEach(data => {
-                load_wooden(null, null).then(result => {
-                    scene.add(result.mesh);
+            const vrmBase64 = (document.getElementById('vrm-data-base64')?.textContent || '').trim();
+            const useVrmPreview = vrmBase64.length > 0;
 
-                    result.mesh.castShadow = true;
-                    result.mesh.receiveShadow = true;
-
-                    model_mesh[data.id] = result.bones;
-
-                    loadedModelCount++;
-
-                    if (loadedModelCount === expectedModelCount) {
-                        modelsLoaded = true;
-                        updateLoadingStatus();
-                        updateFrame();
-                        enablePlaybackControls();
-                        fitCameraToScene(scene, camera, controls, { axis_up: 'y', excludeNames: ['ground'] });
-                        setTimeout(() => playAnimation(), 500);
-                    } else {
-                        updateLoadingStatus();
+            if (useVrmPreview) {
+                let cachedVrm = null;
+                const canClone = typeof VRMUtils.deepClone === 'function';
+                const getVrmInstance = async () => {
+                    if (!cachedVrm) {
+                        cachedVrm = await loadVrmFromBase64(vrmBase64);
                     }
-                }).catch(err => {
-                    console.error("Failed to load wooden model:", err);
+                    if (canClone) {
+                        return VRMUtils.deepClone(cachedVrm);
+                    }
+                    return await loadVrmFromBase64(vrmBase64);
+                };
+
+                infos[0].forEach(data => {
+                    getVrmInstance().then(vrm => {
+                        const vrmScene = vrm.scene;
+                        console.log("=== VRM Debug Info ===");
+                        console.log("VRM object:", vrm);
+
+                        vrmScene.traverse((obj) => {
+                            obj.castShadow = true;
+                            obj.receiveShadow = true;
+
+                            // Convert VRM ShaderMaterial (MToon) to MeshStandardMaterial
+                            if (obj.isMesh && obj.material) {
+                                obj.visible = true;
+                                obj.frustumCulled = false;
+
+                                const convertMaterial = (mat) => {
+                                    // Extract texture from ShaderMaterial uniforms or direct property
+                                    let diffuseMap = mat.map;
+                                    if (!diffuseMap && mat.uniforms && mat.uniforms.map) {
+                                        diffuseMap = mat.uniforms.map.value;
+                                    }
+
+                                    // Fix texture color space
+                                    if (diffuseMap) {
+                                        diffuseMap.colorSpace = THREE.SRGBColorSpace;
+                                    }
+
+                                    // Create standard material
+                                    const newMat = new THREE.MeshStandardMaterial({
+                                        map: diffuseMap,
+                                        color: mat.color || new THREE.Color(1, 1, 1),
+                                        side: THREE.DoubleSide,
+                                        transparent: mat.transparent || false,
+                                        opacity: mat.opacity !== undefined ? mat.opacity : 1.0,
+                                        roughness: 0.7,
+                                        metalness: 0.1,
+                                    });
+
+                                    console.log(`Converted material: ${mat.type} -> MeshStandardMaterial, map:`, diffuseMap);
+                                    return newMat;
+                                };
+
+                                if (Array.isArray(obj.material)) {
+                                    obj.material = obj.material.map(convertMaterial);
+                                } else {
+                                    obj.material = convertMaterial(obj.material);
+                                }
+                            }
+                        });
+                        scene.add(vrmScene);
+                        const bones = buildVrmBoneMap(vrm);
+                        model_mesh[data.id] = { bones, sceneRoot: vrmScene, type: 'vrm', vrm };
+                        vrmInstances.push(vrm);
+
+                        loadedModelCount++;
+
+                        if (loadedModelCount === expectedModelCount) {
+                            modelsLoaded = true;
+                            updateLoadingStatus();
+                            updateFrame();
+                            enablePlaybackControls();
+                            fitCameraToScene(scene, camera, controls, { axis_up: 'y', excludeNames: ['ground'] });
+                            setTimeout(() => playAnimation(), 500);
+                        } else {
+                            updateLoadingStatus();
+                        }
+                    }).catch(err => {
+                        console.error("Failed to load VRM model:", err);
+                    });
                 });
-            });
+            } else {
+                infos[0].forEach(data => {
+                    load_wooden(null, null).then(result => {
+                        scene.add(result.mesh);
+
+                        result.mesh.castShadow = true;
+                        result.mesh.receiveShadow = true;
+
+                        model_mesh[data.id] = result.bones;
+
+                        loadedModelCount++;
+
+                        if (loadedModelCount === expectedModelCount) {
+                            modelsLoaded = true;
+                            updateLoadingStatus();
+                            updateFrame();
+                            enablePlaybackControls();
+                            fitCameraToScene(scene, camera, controls, { axis_up: 'y', excludeNames: ['ground'] });
+                            setTimeout(() => playAnimation(), 500);
+                        } else {
+                            updateLoadingStatus();
+                        }
+                    }).catch(err => {
+                        console.error("Failed to load wooden model:", err);
+                    });
+                });
+            }
 
             initPlaybackControls();
             animate();
@@ -967,6 +1181,11 @@
         if (controls && controls.enableDamping) {
             controls.update();
         }
+        vrmInstances.forEach(vrm => {
+            if (vrm && vrm.update) {
+                vrm.update(0);
+            }
+        });
         renderer.render(scene, camera);
     }
 
