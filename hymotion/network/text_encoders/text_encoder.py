@@ -98,8 +98,20 @@ class HYTextModel(nn.Module):
                 LLM_ENCODER_LAYOUT[llm_type]["module_path"],
                 padding_side="right",
             )
+            # Check for quantization settings via environment variable
+            use_8bit = os.environ.get("LLM_LOAD_IN_8BIT", "0") == "1"
+            use_4bit = os.environ.get("LLM_LOAD_IN_4BIT", "0") == "1"
+
+            load_kwargs = {"low_cpu_mem_usage": True}
+            if use_4bit:
+                load_kwargs["load_in_4bit"] = True
+                load_kwargs["device_map"] = "auto"
+            elif use_8bit:
+                load_kwargs["load_in_8bit"] = True
+                load_kwargs["device_map"] = "auto"
+
             self.llm_text_encoder = LLM_ENCODER_LAYOUT[llm_type]["text_encoder_class"].from_pretrained(
-                LLM_ENCODER_LAYOUT[llm_type]["module_path"], low_cpu_mem_usage=True
+                LLM_ENCODER_LAYOUT[llm_type]["module_path"], **load_kwargs
             )
             self.llm_text_encoder = self.llm_text_encoder.eval().requires_grad_(False)
             self.ctxt_dim = self.llm_text_encoder.config.hidden_size

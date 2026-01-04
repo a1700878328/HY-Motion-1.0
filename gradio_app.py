@@ -16,10 +16,21 @@ import gradio as gr
 
 def try_to_download_model():
     repo_id = "tencent/HY-Motion-1.0"
-    target_folder = "HY-Motion-1.0-Lite"
+    target_folder = "HY-Motion-1.0"
+    local_dir = "../models/tencent"
+    # Model files are in nested folder: HY-Motion-1.0/HY-Motion-1.0/
+    final_model_path = os.path.join(local_dir, target_folder, target_folder)
+
+    # Check if model already exists locally (check for latest.ckpt)
+    ckpt_path = os.path.join(final_model_path, "latest.ckpt")
+    if os.path.exists(ckpt_path):
+        print(f">>> Model already exists at: {final_model_path}")
+        return final_model_path
+
+    # Download if not exists
     print(f">>> start download ", repo_id, target_folder)
-    local_dir = snapshot_download(repo_id=repo_id, allow_patterns=f"{target_folder}/*", local_dir="./downloaded_models")
-    final_model_path = os.path.join(local_dir, target_folder)
+    local_dir = snapshot_download(repo_id=repo_id, allow_patterns=f"{target_folder}/*", local_dir=local_dir)
+    final_model_path = os.path.join(local_dir, target_folder, target_folder)
     print(f">>> Final model path: {final_model_path}")
     return final_model_path
 
@@ -910,4 +921,4 @@ if __name__ == "__main__":
     # Create demo at module level for Hugging Face Spaces
     final_model_path = try_to_download_model()
     demo = create_demo(final_model_path)
-    demo.launch()
+    demo.launch(server_name="0.0.0.0")
