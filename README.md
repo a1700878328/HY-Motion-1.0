@@ -149,6 +149,28 @@ python3 gradio_app.py
 - VRM's MToon shaders are automatically converted to standard materials for web compatibility.
 - Coordinate system differences between SMPL and VRM are automatically handled.
 
+#### Custom FBX Template
+
+You can override the default FBX template for motion retargeting by setting the `HYMOTION_TEMPLATE_FBX` environment variable:
+
+```bash
+export HYMOTION_TEMPLATE_FBX="path/to/your/template.fbx"
+python3 local_infer.py --model_path ckpts/tencent/HY-Motion-1.0
+```
+
+#### VRM to FBX Conversion
+
+A utility script is provided to convert VRM files to FBX format:
+
+```bash
+python3 scripts/vrm_to_fbx.py input.vrm output.fbx
+```
+
+Supported backends (auto-detected in order of preference):
+1. Blender (requires `blender` on PATH)
+2. Assimp CLI (requires `assimp` on PATH)
+3. pyassimp (Python library)
+
 
 ## 🔗 BibTeX
 

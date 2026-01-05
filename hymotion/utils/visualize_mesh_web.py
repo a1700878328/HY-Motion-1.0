@@ -1,3 +1,4 @@
+import base64
 import json
 import os
 import re
@@ -387,9 +388,19 @@ def generate_static_html_content(
     with open(template_path, "r", encoding="utf-8") as f:
         template_content = f.read()
 
+    vrm_data_base64 = ""
+    vrm_path = os.environ.get("HYMOTION_PREVIEW_VRM")
+    if vrm_path:
+        try:
+            with open(vrm_path, "rb") as f:
+                vrm_data_base64 = base64.b64encode(f.read()).decode("ascii")
+        except Exception as exc:
+            print(f">>> Warning: Failed to load VRM preview file '{vrm_path}': {exc}")
+
     # Replace placeholders with actual data
     html_content = template_content.replace("{{ smpl_data_json }}", smpl_data_json)
     html_content = html_content.replace("{{ caption_html }}", caption_html)
+    html_content = html_content.replace("{{ vrm_data_base64 }}", vrm_data_base64)
 
     print(f">>> Generated static HTML content for {folder_name}/{file_name}")
     return html_content

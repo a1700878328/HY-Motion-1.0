@@ -494,8 +494,10 @@ class SMPLH2WoodFBX:
             smplh_to_fbx_mapping: Custom mapping from SMPL-H joint names to FBX node names
             scale: Scale factor for translation (default 100 for m to cm conversion)
         """
-        print(f"[{self.__class__.__name__}] Template FBX: {template_fbx_path}")
-        self.template_fbx_path = template_fbx_path
+        env_override = os.environ.get("HYMOTION_TEMPLATE_FBX")
+        resolved_template = env_override or template_fbx_path
+        print(f"[{self.__class__.__name__}] Template FBX: {resolved_template}")
+        self.template_fbx_path = resolved_template
         self.smplh_to_fbx_mapping = smplh_to_fbx_mapping
         self.scale = scale
 
