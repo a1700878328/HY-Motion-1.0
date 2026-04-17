@@ -18,8 +18,7 @@ def try_to_download_model():
     repo_id = "tencent/HY-Motion-1.0"
     target_folder = "HY-Motion-1.0"
     local_dir = "../models/tencent"
-    # Model files are in nested folder: HY-Motion-1.0/HY-Motion-1.0/
-    final_model_path = os.path.join(local_dir, target_folder, target_folder)
+    final_model_path = os.path.join(local_dir, target_folder)
 
     # Check if model already exists locally (check for latest.ckpt)
     ckpt_path = os.path.join(final_model_path, "latest.ckpt")
@@ -30,7 +29,7 @@ def try_to_download_model():
     # Download if not exists
     print(f">>> start download ", repo_id, target_folder)
     local_dir = snapshot_download(repo_id=repo_id, allow_patterns=f"{target_folder}/*", local_dir=local_dir)
-    final_model_path = os.path.join(local_dir, target_folder, target_folder)
+    final_model_path = os.path.join(local_dir, target_folder)
     print(f">>> Final model path: {final_model_path}")
     return final_model_path
 
